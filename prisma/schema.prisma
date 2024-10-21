@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum OrderEventStatus {
+  PENDING
+  ACCEPTED
+  OUT_FOR_DELEVERY
+  CANCELLED
+}
+
+model User {
+  id                     Int      @id @default(autoincrement())
+  name                   String
+  email                  String   @unique
+  role                   Role     @default(USER)
+  password               String
+  createdAt              DateTime @default(now())
+  updateAt               DateTime @updatedAt
+  defualtShippingAddress Int?
+  defualtBillingAddress  Int?
+
+  address  Address[]
+  cartItem CartItem[]
+  orders   Order[]
+
+  @@map("users")
+}
+
+model Address {
+  id        Int      @id @default(autoincrement())
+  lineOne   String
+  lineTwo   String
+  city      String
+  country   String
+  pincode   String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+
+  @@map("addresses")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String   @db.Text
+  tags        String
+  price       Decimal
+  createdAt   DateTime @default(now())
+  updateAt    DateTime @updatedAt
+
+  cartItem     CartItem[]
+  orderProduct OrderProduct[]
+
+  @@fulltext([name, description, tags])
+  @@map("products")
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  quantity  Int
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@map("Cart_item")
+}
+
+model Order {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime         @default(now())
+  updateAt  DateTime         @updatedAt
+  userId    Int
+  address   String
+  netAmount Decimal
+  user      User             @relation(fields: [userId], references: [id])
+  status    OrderEventStatus @default(PENDING)
+  products  OrderProduct[]
+  events    OrderEvent[]
+
+  @@map("orders")
+}
+
+model OrderProduct {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  quantity  Int
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+  userId    Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@map("order_products")
+}
+
+model OrderEvent {
+  id      Int @id @default(autoincrement())
+  orderId Int
+
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  status OrderEventStatus @default(PENDING)
+
+  @@map("order_events")
+}
